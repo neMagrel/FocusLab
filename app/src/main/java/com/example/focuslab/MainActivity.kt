@@ -8,19 +8,19 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import com.example.focuslab.focus.FocusUiActions
-import com.example.focuslab.focus.FocusUiState
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.example.focuslab.R
+import com.example.focuslab.focus.ConfigureCategoriesButton
 import com.example.focuslab.focus.FocusRoute
+import com.example.focuslab.focus.FocusUiActions
+import com.example.focuslab.focus.FocusUiState
 import com.example.focuslab.ui.theme.FocusLabTheme
 
 class MainActivity : ComponentActivity() {
@@ -59,13 +59,11 @@ private fun FocusLabShell(
         uiState.categories.forEach { category ->
             Text(text = "${category.emoji} ${category.title}")
         }
-        Button(
+        ConfigureCategoriesButton(
             onClick = actions.onManageCategories,
             enabled = uiState.selectionEnabled,
-            modifier = Modifier.padding(top = 16.dp)
-        ) {
-            Text("Настроить категории")
-        }
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+        )
     }
 }
 
