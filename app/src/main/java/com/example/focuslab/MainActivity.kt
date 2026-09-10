@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.focuslab.R
+import com.example.focuslab.focus.FocusRoute
 import com.example.focuslab.ui.theme.FocusLabTheme
 
 class MainActivity : ComponentActivity() {
@@ -23,7 +24,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             FocusLabTheme {
-                FocusLabShell()
+                FocusRoute { _, _ ->
+                    FocusLabShell()
+                }
             }
         }
     }
