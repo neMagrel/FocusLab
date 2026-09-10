@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "studentFiles": [
+    "app/src/main/res/values/strings.xml",
+    "app/src/main/java/com/example/focuslab/focus/model/DefaultFocusCategories.kt",
+    "app/src/main/java/com/example/focuslab/focus/FocusScreen.kt",
+    "app/src/main/java/com/example/focuslab/focus/ProgressCard.kt"
+  ],
+  "checkpoints": [
+    {
+      "id": "01_starter",
+      "status": "available",
+      "directory": "01_starter",
+      "description": "Canonical incomplete classroom starter before student changes."
+    },
+    {
+      "id": "02_identity",
+      "status": "planned",
+      "description": "Added with Stage 2.1 reference state."
+    },
+    {
+      "id": "03_components",
+      "status": "planned",
+      "description": "Added with Stage 2.2 reference state."
+    },
+    {
+      "id": "04_progress",
+      "status": "planned",
+      "description": "Added with Stage 2.3 reference state."
+    },
+    {
+      "id": "05_selection",
+      "status": "planned",
+      "description": "Added with Stage 2.4 reference state."
+    },
+    {
+      "id": "06_interactive",
+      "status": "planned",
+      "description": "Added with Stage 2.5 reference state."
+    },
+    {
+      "id": "07_personalized",
+      "status": "planned",
+      "description": "Added with Stage 2.7 reference state."
+    }
+  ]
+}
