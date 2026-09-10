@@ -24,7 +24,20 @@ data class FocusUiActions(
 )
 
 @Composable
-fun FocusRoute(
+fun FocusRoute() {
+    FocusRoute { uiState, actions ->
+        FocusScreen(
+            uiState = uiState,
+            onCategorySelected = actions.onCategorySelected,
+            onDurationSelected = actions.onDurationSelected,
+            onStartFocus = actions.onStartFocus,
+            onManageCategories = actions.onManageCategories
+        )
+    }
+}
+
+@Composable
+internal fun FocusRoute(
     content: @Composable (FocusUiState, FocusUiActions) -> Unit
 ) {
     val applicationContext = LocalContext.current.applicationContext
