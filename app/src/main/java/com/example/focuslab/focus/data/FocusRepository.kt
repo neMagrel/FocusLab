@@ -1,5 +1,6 @@
 package com.example.focuslab.focus.data
 
+import com.example.focuslab.focus.model.ActiveFocusSession
 import com.example.focuslab.focus.model.FocusCategory
 import com.example.focuslab.focus.model.FocusProgress
 import kotlinx.coroutines.flow.Flow
@@ -8,7 +9,8 @@ data class FocusRepositorySnapshot(
     val categories: List<FocusCategory>,
     val selectedCategoryId: String,
     val selectedDurationMinutes: Int,
-    val progress: FocusProgress
+    val progress: FocusProgress,
+    val activeSession: ActiveFocusSession? = null
 )
 
 interface FocusRepository {
@@ -27,4 +29,8 @@ interface FocusRepository {
     suspend fun selectDuration(durationMinutes: Int): Boolean
 
     suspend fun updateProgress(progress: FocusProgress): Boolean
+
+    suspend fun startFocusSession(): Boolean
+
+    suspend fun completeSessionIfActive(expectedSessionId: String): Boolean
 }

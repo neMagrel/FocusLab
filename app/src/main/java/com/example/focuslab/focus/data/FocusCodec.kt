@@ -1,13 +1,13 @@
 package com.example.focuslab.focus.data
 
+import com.example.focuslab.focus.model.ActiveFocusSession
 import com.example.focuslab.focus.model.FocusCategory
 import java.nio.charset.StandardCharsets
-import java.util.Base64
+import kotlin.io.encoding.Base64
 
 internal object FocusCodec {
     private const val VERSION = "v1"
-    private val encoder = Base64.getUrlEncoder().withoutPadding()
-    private val decoder = Base64.getUrlDecoder()
+    private val base64 = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT)
 
     fun encode(categories: List<FocusCategory>): String = buildString {
         append(VERSION)
@@ -36,9 +36,31 @@ internal object FocusCodec {
         }
     }.getOrNull()
 
+    fun encodeActiveSession(session: ActiveFocusSession): String = listOf(
+        VERSION,
+        encodeField(session.id),
+        encodeField(session.categoryId),
+        session.durationMinutes.toString(),
+        session.startedAtEpochMillis.toString(),
+        session.endsAtEpochMillis.toString()
+    ).joinToString(".")
+
+    fun decodeActiveSession(value: String): ActiveFocusSession? = runCatching {
+        val fields = value.split('.')
+        require(fields.size == 6)
+        require(fields[0] == VERSION)
+        ActiveFocusSession(
+            id = decodeField(fields[1]),
+            categoryId = decodeField(fields[2]),
+            durationMinutes = fields[3].toInt(),
+            startedAtEpochMillis = fields[4].toLong(),
+            endsAtEpochMillis = fields[5].toLong()
+        )
+    }.getOrNull()
+
     private fun encodeField(value: String): String =
-        encoder.encodeToString(value.toByteArray(StandardCharsets.UTF_8))
+        base64.encode(value.toByteArray(StandardCharsets.UTF_8))
 
     private fun decodeField(value: String): String =
-        String(decoder.decode(value), StandardCharsets.UTF_8)
+        String(base64.decode(value), StandardCharsets.UTF_8)
 }

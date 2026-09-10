@@ -7,11 +7,16 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.example.focuslab.focus.model.ActiveFocusSession
 import com.example.focuslab.focus.model.DefaultFocusCategories
 import com.example.focuslab.focus.model.FocusCategory
 import com.example.focuslab.focus.model.FocusProgress
+import com.example.focuslab.focus.model.SystemTimeProvider
+import com.example.focuslab.focus.model.TimeProvider
 import com.example.focuslab.focus.model.isSupportedDuration
 import com.example.focuslab.focus.model.normalizeCategoryTitle
+import com.example.focuslab.focus.model.rewardForDuration
+import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
@@ -19,6 +24,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
 internal const val DEFAULT_DURATION_MINUTES = 25
+private const val MILLIS_PER_MINUTE = 60_000L
 
 internal object FocusPreferenceKeys {
     val categories = stringPreferencesKey("categories")
@@ -27,10 +33,12 @@ internal object FocusPreferenceKeys {
     val xp = intPreferencesKey("xp")
     val completedSessions = intPreferencesKey("completed_sessions")
     val categoriesInitialized = booleanPreferencesKey("categories_initialized")
+    val activeSession = stringPreferencesKey("active_session")
 }
 
 class DataStoreFocusRepository(
-    private val dataStore: DataStore<Preferences>
+    private val dataStore: DataStore<Preferences>,
+    private val timeProvider: TimeProvider = SystemTimeProvider
 ) : FocusRepository {
     override val snapshots: Flow<FocusRepositorySnapshot> = flow {
         currentSnapshot()
@@ -128,6 +136,50 @@ class DataStoreFocusRepository(
         return true
     }
 
+    override suspend fun startFocusSession(): Boolean {
+        var started = false
+        dataStore.edit { preferences ->
+            val current = normalizeAndRepair(preferences)
+            val categoryExists = current.categories.any { it.id == current.selectedCategoryId }
+            if (
+                current.activeSession == null &&
+                categoryExists &&
+                isSupportedDuration(current.selectedDurationMinutes)
+            ) {
+                val startedAtEpochMillis = timeProvider.nowEpochMillis()
+                val session = ActiveFocusSession(
+                    id = UUID.randomUUID().toString(),
+                    categoryId = current.selectedCategoryId,
+                    durationMinutes = current.selectedDurationMinutes,
+                    startedAtEpochMillis = startedAtEpochMillis,
+                    endsAtEpochMillis = startedAtEpochMillis +
+                        current.selectedDurationMinutes * MILLIS_PER_MINUTE
+                )
+                preferences[FocusPreferenceKeys.activeSession] =
+                    FocusCodec.encodeActiveSession(session)
+                started = true
+            }
+        }
+        return started
+    }
+
+    override suspend fun completeSessionIfActive(expectedSessionId: String): Boolean {
+        var completed = false
+        dataStore.edit { preferences ->
+            val current = normalizeAndRepair(preferences)
+            val session = current.activeSession
+            if (session != null && session.id == expectedSessionId) {
+                preferences[FocusPreferenceKeys.xp] =
+                    current.progress.xp + rewardForDuration(session.durationMinutes)
+                preferences[FocusPreferenceKeys.completedSessions] =
+                    current.progress.completedSessions + 1
+                preferences.remove(FocusPreferenceKeys.activeSession)
+                completed = true
+            }
+        }
+        return completed
+    }
+
     private fun normalizeAndRepair(
         preferences: MutablePreferences
     ): FocusRepositorySnapshot {
@@ -139,6 +191,10 @@ class DataStoreFocusRepository(
         preferences[FocusPreferenceKeys.xp] = snapshot.progress.xp
         preferences[FocusPreferenceKeys.completedSessions] =
             snapshot.progress.completedSessions
+        snapshot.activeSession?.let { session ->
+            preferences[FocusPreferenceKeys.activeSession] =
+                FocusCodec.encodeActiveSession(session)
+        } ?: preferences.remove(FocusPreferenceKeys.activeSession)
         preferences[FocusPreferenceKeys.categoriesInitialized] = true
         return snapshot
     }
@@ -160,6 +216,9 @@ class DataStoreFocusRepository(
         val selectedDurationMinutes = preferences[FocusPreferenceKeys.selectedDurationMinutes]
             ?.takeIf(::isSupportedDuration)
             ?: DEFAULT_DURATION_MINUTES
+        val activeSession = preferences[FocusPreferenceKeys.activeSession]
+            ?.let(FocusCodec::decodeActiveSession)
+            ?.takeIf { it.isValidFor(categories) }
 
         return FocusRepositorySnapshot(
             categories = categories,
@@ -169,7 +228,8 @@ class DataStoreFocusRepository(
                 xp = (preferences[FocusPreferenceKeys.xp] ?: 0).coerceAtLeast(0),
                 completedSessions = (preferences[FocusPreferenceKeys.completedSessions] ?: 0)
                     .coerceAtLeast(0)
-            )
+            ),
+            activeSession = activeSession
         )
     }
 
@@ -177,8 +237,16 @@ class DataStoreFocusRepository(
         categories = DefaultFocusCategories,
         selectedCategoryId = DefaultFocusCategories.first().id,
         selectedDurationMinutes = DEFAULT_DURATION_MINUTES,
-        progress = FocusProgress(xp = 0, completedSessions = 0)
+        progress = FocusProgress(xp = 0, completedSessions = 0),
+        activeSession = null
     )
+
+    private fun ActiveFocusSession.isValidFor(categories: List<FocusCategory>): Boolean =
+        id.isNotBlank() &&
+            categories.any { it.id == categoryId } &&
+            isSupportedDuration(durationMinutes) &&
+            startedAtEpochMillis >= 0L &&
+            endsAtEpochMillis == startedAtEpochMillis + durationMinutes * MILLIS_PER_MINUTE
 
     private fun FocusCategory.isValidFor(existing: List<FocusCategory>): Boolean {
         val normalizedTitle = normalizeCategoryTitle(title)

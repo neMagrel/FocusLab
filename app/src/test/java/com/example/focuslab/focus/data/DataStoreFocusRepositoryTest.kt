@@ -11,6 +11,8 @@ import com.example.focuslab.focus.model.DefaultFocusCategories
 import com.example.focuslab.focus.model.FocusCategory
 import com.example.focuslab.focus.model.FocusProgress
 import com.example.focuslab.focus.model.SUPPORTED_DURATIONS
+import com.example.focuslab.focus.model.TimeProvider
+import com.example.focuslab.focus.model.remainingMillis
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +23,7 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -45,6 +48,7 @@ class DataStoreFocusRepositoryTest {
         assertEquals(DEFAULT_DURATION_MINUTES, snapshot.selectedDurationMinutes)
         assertTrue(snapshot.selectedDurationMinutes in SUPPORTED_DURATIONS)
         assertEquals(FocusProgress(xp = 0, completedSessions = 0), snapshot.progress)
+        assertNull(snapshot.activeSession)
         assertEquals(true, preferences[FocusPreferenceKeys.categoriesInitialized])
         close(handle)
     }
@@ -262,6 +266,164 @@ class DataStoreFocusRepositoryTest {
         assertEquals(DEFAULT_DURATION_MINUTES, repaired[FocusPreferenceKeys.selectedDurationMinutes])
         assertEquals(0, repaired[FocusPreferenceKeys.xp])
         assertEquals(0, repaired[FocusPreferenceKeys.completedSessions])
+        close(handle)
+    }
+
+    @Test
+    fun `start persists one session with absolute timestamps and does not overwrite it`() =
+        runBlocking {
+            listOf(1, 5).forEach { duration ->
+                val handle = createStore()
+                val now = 50_000L
+                val repository = DataStoreFocusRepository(
+                    dataStore = handle.dataStore,
+                    timeProvider = TimeProvider { now }
+                )
+                repository.currentSnapshot()
+                assertTrue(repository.selectCategory("reading"))
+                assertTrue(repository.selectDuration(duration))
+
+                assertTrue(repository.startFocusSession())
+                val firstSession = requireNotNull(repository.currentSnapshot().activeSession)
+                assertTrue(firstSession.id.isNotBlank())
+                assertEquals("reading", firstSession.categoryId)
+                assertEquals(duration, firstSession.durationMinutes)
+                assertEquals(now, firstSession.startedAtEpochMillis)
+                assertEquals(now + duration * 60_000L, firstSession.endsAtEpochMillis)
+                assertEquals(FocusProgress(0, 0), repository.currentSnapshot().progress)
+
+                assertFalse(repository.startFocusSession())
+                assertEquals(firstSession, repository.currentSnapshot().activeSession)
+                close(handle)
+            }
+        }
+
+    @Test
+    fun `active session survives repository recreation before its end`() = runBlocking {
+        val file = newStoreFile()
+        val startedAt = 1_000_000L
+        val firstHandle = createStore(file)
+        val firstRepository = DataStoreFocusRepository(
+            dataStore = firstHandle.dataStore,
+            timeProvider = TimeProvider { startedAt }
+        )
+        firstRepository.currentSnapshot()
+        assertTrue(firstRepository.selectDuration(5))
+        assertTrue(firstRepository.startFocusSession())
+        val persistedSession = requireNotNull(firstRepository.currentSnapshot().activeSession)
+        close(firstHandle)
+
+        val reopenedAt = startedAt + 60_000L
+        val secondHandle = createStore(file)
+        val reopenedRepository = DataStoreFocusRepository(
+            dataStore = secondHandle.dataStore,
+            timeProvider = TimeProvider { reopenedAt }
+        )
+        val reopenedSession = reopenedRepository.currentSnapshot().activeSession
+
+        assertEquals(persistedSession, reopenedSession)
+        assertEquals(240_000L, remainingMillis(requireNotNull(reopenedSession).endsAtEpochMillis, reopenedAt))
+        close(secondHandle)
+    }
+
+    @Test
+    fun `matching completion rewards from session duration and is idempotent`() = runBlocking {
+        val expectedRewards = mapOf(1 to 10, 5 to 20, 15 to 30, 25 to 40)
+
+        expectedRewards.forEach { (duration, reward) ->
+            val handle = createStore()
+            val repository = DataStoreFocusRepository(
+                dataStore = handle.dataStore,
+                timeProvider = TimeProvider { 10_000L }
+            )
+            repository.currentSnapshot()
+            assertTrue(repository.updateProgress(FocusProgress(xp = 70, completedSessions = 4)))
+            assertTrue(repository.selectDuration(duration))
+            assertTrue(repository.startFocusSession())
+            val session = requireNotNull(repository.currentSnapshot().activeSession)
+            val otherDuration = if (duration == 25) 1 else 25
+            assertTrue(repository.selectDuration(otherDuration))
+
+            assertTrue(repository.completeSessionIfActive(session.id))
+            val completed = repository.currentSnapshot()
+            assertEquals(FocusProgress(70 + reward, 5), completed.progress)
+            assertNull(completed.activeSession)
+
+            assertFalse(repository.completeSessionIfActive(session.id))
+            assertEquals(completed, repository.currentSnapshot())
+            close(handle)
+        }
+    }
+
+    @Test
+    fun `wrong completion id and missing active session are no-ops`() = runBlocking {
+        val handle = createStore()
+        val repository = DataStoreFocusRepository(
+            dataStore = handle.dataStore,
+            timeProvider = TimeProvider { 20_000L }
+        )
+        val initial = repository.currentSnapshot()
+        assertFalse(repository.completeSessionIfActive("missing"))
+        assertEquals(initial, repository.currentSnapshot())
+
+        assertTrue(repository.startFocusSession())
+        val running = repository.currentSnapshot()
+        assertFalse(repository.completeSessionIfActive("wrong-id"))
+        assertEquals(running, repository.currentSnapshot())
+        close(handle)
+    }
+
+    @Test
+    fun `expired session after recreation completes exactly once`() = runBlocking {
+        val file = newStoreFile()
+        val startedAt = 500_000L
+        val firstHandle = createStore(file)
+        val firstRepository = DataStoreFocusRepository(
+            dataStore = firstHandle.dataStore,
+            timeProvider = TimeProvider { startedAt }
+        )
+        firstRepository.currentSnapshot()
+        assertTrue(firstRepository.selectDuration(1))
+        assertTrue(firstRepository.startFocusSession())
+        val session = requireNotNull(firstRepository.currentSnapshot().activeSession)
+        close(firstHandle)
+
+        val secondHandle = createStore(file)
+        val reopened = DataStoreFocusRepository(
+            dataStore = secondHandle.dataStore,
+            timeProvider = TimeProvider { session.endsAtEpochMillis + 1L }
+        )
+        val recoveredSession = requireNotNull(reopened.currentSnapshot().activeSession)
+        assertEquals(0L, remainingMillis(recoveredSession.endsAtEpochMillis, session.endsAtEpochMillis + 1L))
+
+        assertTrue(reopened.completeSessionIfActive(recoveredSession.id))
+        assertFalse(reopened.completeSessionIfActive(recoveredSession.id))
+        assertEquals(FocusProgress(10, 1), reopened.currentSnapshot().progress)
+        assertNull(reopened.currentSnapshot().activeSession)
+        close(secondHandle)
+    }
+
+    @Test
+    fun `malformed active session is cleared without damaging other durable state`() = runBlocking {
+        val handle = createStoreWithPreferences {
+            it[FocusPreferenceKeys.categoriesInitialized] = true
+            it[FocusPreferenceKeys.categories] = FocusCodec.encode(DefaultFocusCategories)
+            it[FocusPreferenceKeys.selectedCategoryId] = "reading"
+            it[FocusPreferenceKeys.selectedDurationMinutes] = 5
+            it[FocusPreferenceKeys.xp] = 80
+            it[FocusPreferenceKeys.completedSessions] = 3
+            it[FocusPreferenceKeys.activeSession] = "malformed-session"
+        }
+
+        val snapshot = DataStoreFocusRepository(handle.dataStore).currentSnapshot()
+        val repaired = handle.dataStore.data.first()
+
+        assertEquals(DefaultFocusCategories, snapshot.categories)
+        assertEquals("reading", snapshot.selectedCategoryId)
+        assertEquals(5, snapshot.selectedDurationMinutes)
+        assertEquals(FocusProgress(80, 3), snapshot.progress)
+        assertNull(snapshot.activeSession)
+        assertNull(repaired[FocusPreferenceKeys.activeSession])
         close(handle)
     }
 
