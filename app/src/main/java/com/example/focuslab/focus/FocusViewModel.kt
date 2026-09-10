@@ -5,10 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.focuslab.focus.data.FocusRepository
 import com.example.focuslab.focus.data.FocusRepositorySnapshot
 import com.example.focuslab.focus.model.ActiveFocusSession
+import com.example.focuslab.focus.model.FocusCategory
 import com.example.focuslab.focus.model.SystemTimeProvider
 import com.example.focuslab.focus.model.TimeProvider
 import com.example.focuslab.focus.model.remainingMillis
 import com.example.focuslab.focus.model.rewardForDuration
+import java.util.UUID
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -76,6 +78,41 @@ class FocusViewModel(
         latestSnapshot?.let(::publishSnapshot)
         viewModelScope.launch {
             repository.startFocusSession()
+        }
+    }
+
+    fun onAddCategory(title: String, emoji: String) {
+        val snapshot = latestSnapshot ?: return
+        if (snapshot.activeSession != null) return
+
+        val category = FocusCategory(
+            id = UUID.randomUUID().toString(),
+            emoji = emoji,
+            title = title.trim()
+        )
+        viewModelScope.launch {
+            repository.addCategory(category)
+        }
+    }
+
+    fun onEditCategory(categoryId: String, title: String, emoji: String) {
+        val snapshot = latestSnapshot ?: return
+        if (snapshot.activeSession != null) return
+        val existing = snapshot.categories.firstOrNull { it.id == categoryId } ?: return
+
+        viewModelScope.launch {
+            repository.updateCategory(
+                existing.copy(emoji = emoji, title = title.trim())
+            )
+        }
+    }
+
+    fun onDeleteCategory(categoryId: String) {
+        val snapshot = latestSnapshot ?: return
+        if (snapshot.activeSession != null) return
+
+        viewModelScope.launch {
+            repository.deleteCategory(categoryId)
         }
     }
 

@@ -3,6 +3,8 @@ package com.example.focuslab.focus
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -17,7 +19,8 @@ import com.example.focuslab.focus.model.TimeProvider
 data class FocusUiActions(
     val onCategorySelected: (String) -> Unit,
     val onDurationSelected: (Int) -> Unit,
-    val onStartFocus: () -> Unit
+    val onStartFocus: () -> Unit,
+    val onManageCategories: () -> Unit
 )
 
 @Composable
@@ -41,14 +44,26 @@ internal fun FocusRoute(
     content: @Composable (FocusUiState, FocusUiActions) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var categoryEditorOpen by rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     val actions = remember(viewModel) {
         FocusUiActions(
             onCategorySelected = viewModel::onCategorySelected,
             onDurationSelected = viewModel::onDurationSelected,
-            onStartFocus = viewModel::onStartFocus
+            onStartFocus = viewModel::onStartFocus,
+            onManageCategories = { categoryEditorOpen = true }
         )
     }
     content(uiState, actions)
+    if (categoryEditorOpen) {
+        CategoryEditor(
+            categories = uiState.categories,
+            enabled = uiState.selectionEnabled,
+            onAddCategory = viewModel::onAddCategory,
+            onEditCategory = viewModel::onEditCategory,
+            onDeleteCategory = viewModel::onDeleteCategory,
+            onDismiss = { categoryEditorOpen = false }
+        )
+    }
 }
 
 private class FocusViewModelFactory(

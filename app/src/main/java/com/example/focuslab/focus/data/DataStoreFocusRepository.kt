@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.example.focuslab.focus.model.ActiveFocusSession
+import com.example.focuslab.focus.model.CURATED_CATEGORY_EMOJIS
 import com.example.focuslab.focus.model.DefaultFocusCategories
 import com.example.focuslab.focus.model.FocusCategory
 import com.example.focuslab.focus.model.FocusProgress
@@ -16,6 +17,7 @@ import com.example.focuslab.focus.model.TimeProvider
 import com.example.focuslab.focus.model.isSupportedDuration
 import com.example.focuslab.focus.model.normalizeCategoryTitle
 import com.example.focuslab.focus.model.rewardForDuration
+import com.example.focuslab.focus.model.validateCategoryDraft
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -61,9 +63,10 @@ class DataStoreFocusRepository(
         var changed = false
         dataStore.edit { preferences ->
             val current = normalizeAndRepair(preferences)
-            if (category.isValidFor(current.categories)) {
+            val sanitized = category.copy(title = category.title.trim())
+            if (sanitized.isValidFor(current.categories)) {
                 preferences[FocusPreferenceKeys.categories] =
-                    FocusCodec.encode(current.categories + category)
+                    FocusCodec.encode(current.categories + sanitized)
                 changed = true
             }
         }
@@ -76,9 +79,10 @@ class DataStoreFocusRepository(
             val current = normalizeAndRepair(preferences)
             val index = current.categories.indexOfFirst { it.id == category.id }
             val otherCategories = current.categories.filterNot { it.id == category.id }
-            if (index >= 0 && category.isValidFor(otherCategories)) {
+            val sanitized = category.copy(title = category.title.trim())
+            if (index >= 0 && sanitized.isValidFor(otherCategories)) {
                 val updated = current.categories.toMutableList().apply {
-                    this[index] = category
+                    this[index] = sanitized
                 }
                 preferences[FocusPreferenceKeys.categories] = FocusCodec.encode(updated)
                 changed = true
@@ -249,12 +253,14 @@ class DataStoreFocusRepository(
             endsAtEpochMillis == startedAtEpochMillis + durationMinutes * MILLIS_PER_MINUTE
 
     private fun FocusCategory.isValidFor(existing: List<FocusCategory>): Boolean {
-        val normalizedTitle = normalizeCategoryTitle(title)
         return id.isNotBlank() &&
-            emoji.isNotBlank() &&
-            normalizedTitle.isNotEmpty() &&
             existing.none { it.id == id } &&
-            existing.none { normalizeCategoryTitle(it.title) == normalizedTitle }
+            emoji in CURATED_CATEGORY_EMOJIS &&
+            validateCategoryDraft(
+                title = title,
+                emoji = emoji,
+                existingCategories = existing
+            ) == null
     }
 
     private fun isValidCategoryList(categories: List<FocusCategory>): Boolean {

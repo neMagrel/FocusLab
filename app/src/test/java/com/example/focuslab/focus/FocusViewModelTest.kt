@@ -124,6 +124,54 @@ class FocusViewModelTest {
         }
 
     @Test
+    fun `category mutation events update UiState through repository`() =
+        runViewModelTest {
+            val clock = FakeTimeProvider(0L)
+            val repository = FakeFocusRepository(snapshot(selectedCategoryId = "code"), clock)
+            val viewModel = createViewModel(repository, clock)
+            runCurrent()
+
+            viewModel.onAddCategory("  Музыка  ", "🎵")
+            runCurrent()
+            val added = viewModel.uiState.value.categories.last()
+            assertTrue(added.id.isNotBlank())
+            assertEquals("Музыка", added.title)
+            assertEquals("🎵", added.emoji)
+
+            viewModel.onEditCategory(added.id, "  Пианино  ", "🎹")
+            runCurrent()
+            val edited = viewModel.uiState.value.categories.last()
+            assertEquals(added.id, edited.id)
+            assertEquals("Пианино", edited.title)
+            assertEquals("🎹", edited.emoji)
+
+            viewModel.onDeleteCategory("code")
+            runCurrent()
+            assertEquals("study", viewModel.uiState.value.selectedCategoryId)
+            assertFalse(viewModel.uiState.value.categories.any { it.id == "code" })
+        }
+
+    @Test
+    fun `missing category mutation events and mutations while running are safe no-ops`() =
+        runViewModelTest {
+            val clock = FakeTimeProvider(0L)
+            val repository = FakeFocusRepository(
+                snapshot(activeSession = activeSession()),
+                clock
+            )
+            val viewModel = createViewModel(repository, clock)
+            runCurrent()
+
+            viewModel.onEditCategory("missing", "Музыка", "🎵")
+            viewModel.onDeleteCategory("missing")
+            viewModel.onAddCategory("Музыка", "🎵")
+            runCurrent()
+
+            assertTrue(repository.categoryMutations.isEmpty())
+            assertEquals(DefaultFocusCategories, viewModel.uiState.value.categories)
+        }
+
+    @Test
     fun `selection events while running are ignored`() =
         runViewModelTest {
             val clock = FakeTimeProvider(1_000L)
@@ -410,6 +458,7 @@ private class FakeFocusRepository(
     val categorySelections = mutableListOf<String>()
     val durationSelections = mutableListOf<Int>()
     val completionIds = mutableListOf<String>()
+    val categoryMutations = mutableListOf<String>()
     var startCalls = 0
     var completionCalls = 0
     var durableWrites = 0
@@ -417,11 +466,41 @@ private class FakeFocusRepository(
 
     override suspend fun currentSnapshot(): FocusRepositorySnapshot = mutableSnapshots.value
 
-    override suspend fun addCategory(category: FocusCategory): Boolean = false
+    override suspend fun addCategory(category: FocusCategory): Boolean {
+        categoryMutations += "add"
+        val current = mutableSnapshots.value
+        mutableSnapshots.value = current.copy(categories = current.categories + category)
+        durableWrites += 1
+        return true
+    }
 
-    override suspend fun updateCategory(category: FocusCategory): Boolean = false
+    override suspend fun updateCategory(category: FocusCategory): Boolean {
+        categoryMutations += "edit"
+        val current = mutableSnapshots.value
+        val index = current.categories.indexOfFirst { it.id == category.id }
+        if (index < 0) return false
+        val updated = current.categories.toMutableList().apply { this[index] = category }
+        mutableSnapshots.value = current.copy(categories = updated)
+        durableWrites += 1
+        return true
+    }
 
-    override suspend fun deleteCategory(categoryId: String): Boolean = false
+    override suspend fun deleteCategory(categoryId: String): Boolean {
+        categoryMutations += "delete"
+        val current = mutableSnapshots.value
+        val remaining = current.categories.filterNot { it.id == categoryId }
+        if (remaining.size != current.categories.size - 1 || remaining.isEmpty()) return false
+        mutableSnapshots.value = current.copy(
+            categories = remaining,
+            selectedCategoryId = if (current.selectedCategoryId == categoryId) {
+                remaining.first().id
+            } else {
+                current.selectedCategoryId
+            }
+        )
+        durableWrites += 1
+        return true
+    }
 
     override suspend fun selectCategory(categoryId: String): Boolean {
         categorySelections += categoryId

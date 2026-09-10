@@ -169,6 +169,8 @@ class DataStoreFocusRepositoryTest {
         assertFalse(repository.deleteCategory("missing"))
         assertFalse(repository.addCategory(FocusCategory("code", "🎵", "Музыка")))
         assertFalse(repository.addCategory(FocusCategory("music", "🎵", "  КОД ")))
+        assertFalse(repository.addCategory(FocusCategory("long", "🎵", "А".repeat(25))))
+        assertFalse(repository.addCategory(FocusCategory("bad-emoji", "?", "Музыка")))
 
         DefaultFocusCategories.dropLast(1).forEach { category ->
             assertTrue(repository.deleteCategory(category.id))
@@ -177,6 +179,34 @@ class DataStoreFocusRepositoryTest {
         assertFalse(repository.deleteCategory(onlyCategory.id))
         assertEquals(listOf(onlyCategory), repository.currentSnapshot().categories)
         close(handle)
+    }
+
+    @Test
+    fun `category mutations trim titles preserve selection and keep defaults deleted`() = runBlocking {
+        val file = newStoreFile()
+        val firstHandle = createStore(file)
+        val repository = DataStoreFocusRepository(firstHandle.dataStore)
+        repository.currentSnapshot()
+
+        assertTrue(repository.selectCategory("reading"))
+        assertTrue(repository.addCategory(FocusCategory("music", "🎵", "  Музыка  ")))
+        val added = repository.currentSnapshot()
+        assertEquals("Музыка", added.categories.last().title)
+        assertEquals("music", added.categories.last().id)
+
+        assertTrue(repository.deleteCategory("code"))
+        assertEquals("reading", repository.currentSnapshot().selectedCategoryId)
+        close(firstHandle)
+
+        val secondHandle = createStore(file)
+        val reopened = DataStoreFocusRepository(secondHandle.dataStore).currentSnapshot()
+        assertFalse(reopened.categories.any { it.id == "code" })
+        assertEquals("reading", reopened.selectedCategoryId)
+        assertEquals(
+            listOf("study", "reading", "creativity", "music"),
+            reopened.categories.map(FocusCategory::id)
+        )
+        close(secondHandle)
     }
 
     @Test
