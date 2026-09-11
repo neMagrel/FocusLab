@@ -12,6 +12,8 @@ Focus Lab v1 намеренно остаётся компактным учебн
 - Play Store release/signing;
 - сложных тем, color picker и continuous animations.
 
+Debug APK содержит код и персонализированные source defaults, но не экспортирует DataStore установленного приложения. Runtime categories, selection и progress принадлежат конкретной установке и не переносятся на другое устройство простым копированием APK.
+
 ## Timer semantics
 
 Активная сессия сохраняет absolute endsAtEpochMillis. После recreation оставшееся время вычисляется из endsAt и текущего wall-clock. Приложение не обещает выполнение coroutine каждую секунду в background и не использует service/alarm. При следующем наблюдении persisted session выполняется reconcile; завершение атомарно и идемпотентно.
@@ -19,3 +21,5 @@ Focus Lab v1 намеренно остаётся компактным учебн
 ## Starter limitation
 
 Tag focus-lab/starter-v1 содержит намеренно неполный FocusScreen и ProgressCard stub. Отсутствие interaction на начальном экране - учебная граница, а не дефект foundation.
+
+Завершённая эталонная реализация находится в `focus-lab/masterclass-v1`; её нельзя путать со starter при подготовке ученических AVD.

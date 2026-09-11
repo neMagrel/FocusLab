@@ -12,7 +12,7 @@
 8. Проверить restore 01_starter и наличие backup под .recovery/.
 9. Проверить способ передачи APK ученикам без использования сети во время занятия.
 
-Stage 2 reference и tag focus-lab/masterclass-v1 ещё не являются результатом Stage 1. Поэтому полный final UI, реальная минутная сессия через student UI и take-home rehearsal остаются будущими Stage 2/final checks.
+Проверять нужно обе канонические границы: намеренно неполный classroom starter `focus-lab/starter-v1` и завершённый teacher reference `focus-lab/masterclass-v1`. Для final reference обязательны полный UI, реальная минутная сессия, persistence/no-double-reward и take-home APK smoke. APK передаётся через заранее проверенный USB/local-share/LMS channel; runtime DataStore конкретной установки вместе с APK не переносится.
 
 Stop condition: если starter не собирается offline на конкретной машине, она не готова к занятию. Не планировать загрузку зависимостей во время урока.
 

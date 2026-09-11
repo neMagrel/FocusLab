@@ -3,6 +3,7 @@
 ## Перед стартом
 
 - Использовать canonical focus-lab/starter-v1.
+- Teacher demo и финальный take-home smoke выполнять из `focus-lab/masterclass-v1` на отдельном AVD/device.
 - Ученические AVD очистить и после clear НЕ запускать приложение.
 - Teacher demo проводить на отдельном AVD/device.
 - Держать доступными 01_starter restore и debug APK output directory.
@@ -46,4 +47,10 @@ working screen
 -> bonus
 ~~~
 
-Checkpoints 02-07 появляются только вместе с Stage 2 reference states. Не выдавать ученику готовый final source из будущего checkpoint раньше соответствующего шага.
+Checkpoints 02-07 восстанавливают согласованные student-owned snapshots. Не выдавать ученику готовый final source раньше соответствующего шага.
+
+## Take-home APK
+
+На final reference выполнить `.\gradlew.bat testDebugUnitTest --offline` и `.\gradlew.bat assembleDebug --offline`. Generated APK находится в `app/build/outputs/apk/debug/app-debug.apk`; его не нужно добавлять в Git.
+
+Перед передачей установить APK на контрольный target и проверить launch, identity, основные UI-блоки и Start. Передавать сам файл через заранее проверенный USB-накопитель, локальную общую папку или утверждённый LMS/messenger. Runtime categories, selection и progress из teacher/student AVD не входят в APK и на другой установке автоматически не появляются.

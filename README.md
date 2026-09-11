@@ -2,7 +2,7 @@
 
 Focus Lab - одностраничное Android-приложение на Kotlin, Jetpack Compose и Material 3 для фокус-сессий, прогресса и пользовательских категорий.
 
-Текущее состояние - classroom starter. Инфраструктура приложения готова и протестирована, но видимый экран намеренно не завершён: ученик собирает Compose UI, реализует ProgressCard и подключает selection/Start callbacks на мастер-классе.
+Текущее состояние ветки `stage/2-masterclass-reference` - завершённая эталонная реализация мастер-класса. Канонический classroom starter остаётся доступен по tag `focus-lab/starter-v1`, а происходящий от него финальный reference - по immutable tag `focus-lab/masterclass-v1`.
 
 ## Требования
 
@@ -15,25 +15,31 @@ Focus Lab - одностраничное Android-приложение на Kotli
 
 Версии AGP, Kotlin, Compose и Gradle зафиксированы в репозитории. Не обновляйте их перед занятием без отдельного QA.
 
-## Быстрая проверка starter
+## Сборка final reference
 
 Windows:
 
 ~~~powershell
-.\gradlew.bat testDebugUnitTest
+.\gradlew.bat testDebugUnitTest --offline
 .\gradlew.bat assembleDebug --offline
 ~~~
 
 macOS/Linux:
 
 ~~~bash
-./gradlew testDebugUnitTest
+./gradlew testDebugUnitTest --offline
 ./gradlew assembleDebug --offline
 ~~~
 
 Debug APK создаётся в app/build/outputs/apk/debug/app-debug.apk.
 
-## Критическое правило первого запуска
+Перед выдачей преподаватель устанавливает именно этот файл на контрольный AVD/device и проверяет launch, персональную identity, основные UI-блоки и Start. Для передачи используется заранее проверенный classroom channel: USB-накопитель, локальная общая папка либо утверждённый LMS/messenger. APK остаётся generated build artifact и не хранится в Git.
+
+Копирование APK не переносит DataStore конкретной установки. На новом устройстве приложение получает персонализированные source defaults; runtime categories, progress и selection создаются и сохраняются отдельно на этом устройстве.
+
+## Classroom starter и критическое правило первого запуска
+
+Перед подготовкой ученического состояния переключитесь на `focus-lab/starter-v1`. Starter намеренно содержит partial FocusScreen и ProgressCard stub; final reference содержит полный экран, selection/Start wiring и runtime CategoryEditor flow.
 
 На ученическом AVD сначала очистите данные приложения и после очистки НЕ запускайте starter. Ученик должен изменить app_name и одну default category до первого classroom Run, иначе DataStore уже сохранит исходные defaults.
 
@@ -62,7 +68,7 @@ Debug APK создаётся в app/build/outputs/apk/debug/app-debug.apk.
 ./masterclass/scripts/restore-checkpoint.sh 01_starter
 ~~~
 
-Checkpoints 02-07 добавляются только вместе с соответствующими Stage 2 reference states. Готовые решения ученика в starter не включены.
+Checkpoints 02-07 содержат согласованные snapshots student-owned files. Готовые решения ученика в starter не включены; final source не следует выдавать раньше соответствующего шага.
 
 ## Документация
 
@@ -74,3 +80,4 @@ Checkpoints 02-07 добавляются только вместе с соотв
 - [Student steps](masterclass/student-steps.md)
 - [Checkpoint map](masterclass/checkpoints/manifest.json)
 - [Starter QA evidence](evidence/starter/qa-report.md)
+- [Final masterclass evidence](evidence/masterclass-final/stage-2.8-take-home.md)
