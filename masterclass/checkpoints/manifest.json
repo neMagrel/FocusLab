@@ -27,7 +27,8 @@
     },
     {
       "id": "04_progress",
-      "status": "planned",
+      "status": "available",
+      "directory": "04_progress",
       "description": "Added with Stage 2.3 reference state."
     },
     {

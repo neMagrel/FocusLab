@@ -156,4 +156,21 @@ class ReusableComponentsTest {
         composeRule.onNodeWithText("Фокус завершён").assertIsDisplayed()
         composeRule.onNodeWithText("📚 Учёба · +40 XP").assertIsDisplayed()
     }
+
+    @Test
+    fun progressCardRendersProvidedValues() {
+        composeRule.setContent {
+            FocusLabTheme {
+                ProgressCard(
+                    xp = 70,
+                    level = 1,
+                    completedSessions = 4
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("XP: 70").assertIsDisplayed()
+        composeRule.onNodeWithText("Уровень: 1").assertIsDisplayed()
+        composeRule.onNodeWithText("Завершено сессий: 4").assertIsDisplayed()
+    }
 }
