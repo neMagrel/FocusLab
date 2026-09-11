@@ -81,6 +81,15 @@ class FocusViewModel(
         }
     }
 
+    fun onCancelFocus() {
+        val session = latestSnapshot?.activeSession ?: return
+        if (uiState.value.session !is FocusSessionUiState.Running) return
+
+        viewModelScope.launch {
+            repository.cancelSessionIfActive(session.id)
+        }
+    }
+
     fun onAddCategory(title: String, emoji: String) {
         val snapshot = latestSnapshot ?: return
         if (snapshot.activeSession != null) return

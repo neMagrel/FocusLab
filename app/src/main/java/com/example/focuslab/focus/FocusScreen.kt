@@ -18,6 +18,7 @@ fun FocusScreen(
     onCategorySelected: (String) -> Unit,
     onDurationSelected: (Int) -> Unit,
     onStartFocus: () -> Unit,
+    onCancelFocus: () -> Unit,
     onManageCategories: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -53,11 +54,15 @@ fun FocusScreen(
             level = uiState.level,
             completedSessions = uiState.completedSessions
         )
-        FocusPrimaryButton(
-            label = if (uiState.isRunning) "Фокус идёт" else "Начать фокус",
-            enabled = uiState.canStart,
-            onClick = onStartFocus
-        )
+        if (uiState.isRunning) {
+            CancelFocusButton(onClick = onCancelFocus)
+        } else {
+            FocusPrimaryButton(
+                label = "Начать фокус",
+                enabled = uiState.canStart,
+                onClick = onStartFocus
+            )
+        }
         // STUDENT ZONE END
     }
 }
