@@ -15,7 +15,8 @@
     },
     {
       "id": "02_identity",
-      "status": "planned",
+      "status": "available",
+      "directory": "02_identity",
       "description": "Added with Stage 2.1 reference state."
     },
     {
