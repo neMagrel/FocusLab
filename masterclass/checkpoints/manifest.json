@@ -21,7 +21,8 @@
     },
     {
       "id": "03_components",
-      "status": "planned",
+      "status": "available",
+      "directory": "03_components",
       "description": "Added with Stage 2.2 reference state."
     },
     {
