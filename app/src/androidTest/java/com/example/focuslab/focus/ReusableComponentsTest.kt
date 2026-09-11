@@ -175,9 +175,10 @@ class ReusableComponentsTest {
     }
 
     @Test
-    fun focusScreenForwardsSelectionAndDisplaysAuthoritativeValues() {
+    fun focusScreenForwardsSelectionAndStartAndDisplaysAuthoritativeValues() {
         var selectedCategoryId: String? = null
         var selectedDuration: Int? = null
+        var startClicks = 0
         composeRule.setContent {
             FocusLabTheme {
                 FocusScreen(
@@ -189,7 +190,7 @@ class ReusableComponentsTest {
                     ),
                     onCategorySelected = { selectedCategoryId = it },
                     onDurationSelected = { selectedDuration = it },
-                    onStartFocus = {},
+                    onStartFocus = { startClicks++ },
                     onManageCategories = {}
                 )
             }
@@ -199,10 +200,12 @@ class ReusableComponentsTest {
         composeRule.onNodeWithTag("duration_selector_1").assertIsSelected()
         composeRule.onNodeWithTag("category_selector_long").performClick()
         composeRule.onNodeWithTag("duration_selector_15").performClick()
+        composeRule.onNodeWithTag("focus_primary_button").assertIsEnabled().performClick()
 
         composeRule.runOnIdle {
             assertEquals("long", selectedCategoryId)
             assertEquals(15, selectedDuration)
+            assertEquals(1, startClicks)
         }
     }
 }

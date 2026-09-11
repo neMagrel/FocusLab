@@ -39,7 +39,8 @@
     },
     {
       "id": "06_interactive",
-      "status": "planned",
+      "status": "available",
+      "directory": "06_interactive",
       "description": "Added with Stage 2.5 reference state."
     },
     {

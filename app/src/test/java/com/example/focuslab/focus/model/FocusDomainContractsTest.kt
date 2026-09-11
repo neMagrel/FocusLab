@@ -98,16 +98,12 @@ class FocusDomainContractsTest {
     }
 
     @Test
-    fun `default categories have canonical values and unique stable ids`() {
+    fun `default categories keep canonical stable ids after identity personalization`() {
         assertEquals(
-            listOf(
-                FocusCategory(id = "study", emoji = "📚", title = "Учёба"),
-                FocusCategory(id = "code", emoji = "💻", title = "Код"),
-                FocusCategory(id = "reading", emoji = "📖", title = "Чтение"),
-                FocusCategory(id = "creativity", emoji = "🎨", title = "Творчество")
-            ),
-            DefaultFocusCategories
+            listOf("study", "code", "reading", "creativity"),
+            DefaultFocusCategories.map(FocusCategory::id)
         )
+        assertTrue(DefaultFocusCategories.all { it.emoji.isNotBlank() && it.title.isNotBlank() })
         assertEquals(
             DefaultFocusCategories.size,
             DefaultFocusCategories.map(FocusCategory::id).toSet().size
