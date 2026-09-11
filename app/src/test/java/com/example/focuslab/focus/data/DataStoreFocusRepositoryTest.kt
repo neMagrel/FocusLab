@@ -357,6 +357,41 @@ class DataStoreFocusRepositoryTest {
     }
 
     @Test
+    fun `matching cancellation clears only the active session and persists`() = runBlocking {
+        val file = newStoreFile()
+        val firstHandle = createStore(file)
+        val repository = DataStoreFocusRepository(
+            dataStore = firstHandle.dataStore,
+            timeProvider = TimeProvider { 50_000L }
+        )
+        repository.currentSnapshot()
+        assertTrue(repository.selectCategory("reading"))
+        assertTrue(repository.selectDuration(1))
+        assertTrue(repository.updateProgress(FocusProgress(xp = 70, completedSessions = 4)))
+        assertTrue(repository.startFocusSession())
+        val running = repository.currentSnapshot()
+        val session = requireNotNull(running.activeSession)
+
+        assertFalse(repository.cancelSessionIfActive("wrong-id"))
+        assertEquals(running, repository.currentSnapshot())
+        assertTrue(repository.cancelSessionIfActive(session.id))
+
+        val cancelled = repository.currentSnapshot()
+        assertNull(cancelled.activeSession)
+        assertEquals("reading", cancelled.selectedCategoryId)
+        assertEquals(1, cancelled.selectedDurationMinutes)
+        assertEquals(FocusProgress(xp = 70, completedSessions = 4), cancelled.progress)
+        assertFalse(repository.cancelSessionIfActive(session.id))
+        assertFalse(repository.completeSessionIfActive(session.id))
+        close(firstHandle)
+
+        val secondHandle = createStore(file)
+        val reopened = DataStoreFocusRepository(secondHandle.dataStore).currentSnapshot()
+        assertEquals(cancelled, reopened)
+        close(secondHandle)
+    }
+
+    @Test
     fun `matching completion rewards from session duration and is idempotent`() = runBlocking {
         val expectedRewards = mapOf(1 to 10, 5 to 20, 15 to 30, 25 to 40)
 

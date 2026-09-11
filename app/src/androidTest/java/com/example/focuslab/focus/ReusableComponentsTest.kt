@@ -118,6 +118,20 @@ class ReusableComponentsTest {
     }
 
     @Test
+    fun cancelButtonUsesDedicatedSemanticsAndEmitsClick() {
+        var clicks = 0
+        composeRule.setContent {
+            FocusLabTheme {
+                CancelFocusButton(onClick = { clicks++ })
+            }
+        }
+
+        composeRule.onNodeWithTag("cancel_focus_button").assertIsEnabled().performClick()
+        composeRule.onNodeWithText("Отменить фокус").assertIsDisplayed()
+        composeRule.runOnIdle { assertEquals(1, clicks) }
+    }
+
+    @Test
     fun timerCardRendersIdleRunningAndCompletedStates() {
         val session = ActiveFocusSession(
             id = "session",
@@ -192,6 +206,7 @@ class ReusableComponentsTest {
                     onCategorySelected = { selectedCategoryId = it },
                     onDurationSelected = { selectedDuration = it },
                     onStartFocus = { startClicks++ },
+                    onCancelFocus = {},
                     onManageCategories = { manageCategoryClicks++ }
                 )
             }
@@ -210,5 +225,42 @@ class ReusableComponentsTest {
             assertEquals(1, manageCategoryClicks)
             assertEquals(1, startClicks)
         }
+    }
+
+    @Test
+    fun runningFocusScreenShowsCancelActionAndForwardsIt() {
+        var cancelClicks = 0
+        val session = ActiveFocusSession(
+            id = "running-session",
+            categoryId = "study",
+            durationMinutes = 1,
+            startedAtEpochMillis = 0L,
+            endsAtEpochMillis = 60_000L
+        )
+        composeRule.setContent {
+            FocusLabTheme {
+                FocusScreen(
+                    uiState = FocusUiState(
+                        categories = categories,
+                        selectedCategoryId = "study",
+                        selectedDurationMinutes = 1,
+                        session = FocusSessionUiState.Running(
+                            session = session,
+                            category = categories.first(),
+                            remainingMillis = 30_000L,
+                            remainingSeconds = 30L
+                        )
+                    ),
+                    onCategorySelected = {},
+                    onDurationSelected = {},
+                    onStartFocus = {},
+                    onCancelFocus = { cancelClicks++ },
+                    onManageCategories = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("cancel_focus_button").assertIsEnabled().performClick()
+        composeRule.runOnIdle { assertEquals(1, cancelClicks) }
     }
 }

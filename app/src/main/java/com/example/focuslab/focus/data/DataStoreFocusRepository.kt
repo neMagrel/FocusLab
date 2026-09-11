@@ -167,6 +167,18 @@ class DataStoreFocusRepository(
         return started
     }
 
+    override suspend fun cancelSessionIfActive(expectedSessionId: String): Boolean {
+        var cancelled = false
+        dataStore.edit { preferences ->
+            val current = normalizeAndRepair(preferences)
+            if (current.activeSession?.id == expectedSessionId) {
+                preferences.remove(FocusPreferenceKeys.activeSession)
+                cancelled = true
+            }
+        }
+        return cancelled
+    }
+
     override suspend fun completeSessionIfActive(expectedSessionId: String): Boolean {
         var completed = false
         dataStore.edit { preferences ->

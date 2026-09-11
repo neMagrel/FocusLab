@@ -76,7 +76,7 @@ private fun RunningComponentsPreview() {
                     remainingSeconds = 754L
                 )
             )
-            FocusPrimaryButton(label = "Фокус идёт", enabled = false, onClick = {})
+            CancelFocusButton(onClick = {})
         }
     }
 }

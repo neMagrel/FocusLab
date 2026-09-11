@@ -2,7 +2,9 @@
 
 Focus Lab - одностраничное Android-приложение на Kotlin, Jetpack Compose и Material 3 для фокус-сессий, прогресса и пользовательских категорий.
 
-Текущее состояние ветки `stage/2-masterclass-reference` - завершённая эталонная реализация мастер-класса. Канонический classroom starter остаётся доступен по tag `focus-lab/starter-v1`, а происходящий от него финальный reference - по immutable tag `focus-lab/masterclass-v1`.
+Текущее состояние `main` расширяет завершённую эталонную реализацию мастер-класса стабильной отменой активной focus-session. Канонический classroom starter остаётся доступен по tag `focus-lab/starter-v1`, а происходящий от него immutable reference до последующих расширений - по tag `focus-lab/masterclass-v1`.
+
+Во время countdown кнопка `Отменить фокус` атомарно очищает активную session без начисления XP. Выбранные category/duration и уже накопленный progress сохраняются, поэтому сразу после отмены можно исправить выбор и запустить новый таймер.
 
 ## Требования
 

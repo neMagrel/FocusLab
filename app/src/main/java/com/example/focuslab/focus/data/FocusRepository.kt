@@ -32,5 +32,7 @@ interface FocusRepository {
 
     suspend fun startFocusSession(): Boolean
 
+    suspend fun cancelSessionIfActive(expectedSessionId: String): Boolean
+
     suspend fun completeSessionIfActive(expectedSessionId: String): Boolean
 }

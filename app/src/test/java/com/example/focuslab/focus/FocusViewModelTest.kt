@@ -231,6 +231,49 @@ class FocusViewModelTest {
         }
 
     @Test
+    fun `cancel running session clears it without changing progress`() =
+        runViewModelTest {
+            val clock = FakeTimeProvider(10_000L)
+            val session = activeSession(endsAtEpochMillis = 70_000L)
+            val progress = FocusProgress(xp = 70, completedSessions = 4)
+            val repository = FakeFocusRepository(
+                snapshot(
+                    selectedCategoryId = "reading",
+                    selectedDurationMinutes = 1,
+                    progress = progress,
+                    activeSession = session
+                ),
+                clock
+            )
+            val viewModel = createViewModel(repository, clock)
+            runCurrent()
+
+            viewModel.onCancelFocus()
+            runCurrent()
+
+            assertEquals(listOf(session.id), repository.cancellationIds)
+            assertNull(repository.currentSnapshot().activeSession)
+            assertEquals(progress, repository.currentSnapshot().progress)
+            assertSame(FocusSessionUiState.Idle, viewModel.uiState.value.session)
+            assertTrue(viewModel.uiState.value.canStart)
+        }
+
+    @Test
+    fun `cancel while idle is a no-op`() =
+        runViewModelTest {
+            val clock = FakeTimeProvider(0L)
+            val repository = FakeFocusRepository(snapshot(), clock)
+            val viewModel = createViewModel(repository, clock)
+            runCurrent()
+
+            viewModel.onCancelFocus()
+            runCurrent()
+
+            assertTrue(repository.cancellationIds.isEmpty())
+            assertSame(FocusSessionUiState.Idle, viewModel.uiState.value.session)
+        }
+
+    @Test
     fun `reconcile active session before end recovers running state`() =
         runViewModelTest {
             val clock = FakeTimeProvider(20_000L)
@@ -457,6 +500,7 @@ private class FakeFocusRepository(
 
     val categorySelections = mutableListOf<String>()
     val durationSelections = mutableListOf<Int>()
+    val cancellationIds = mutableListOf<String>()
     val completionIds = mutableListOf<String>()
     val categoryMutations = mutableListOf<String>()
     var startCalls = 0
@@ -537,6 +581,16 @@ private class FakeFocusRepository(
                 endsAtEpochMillis = startedAt + current.selectedDurationMinutes * 60_000L
             )
         )
+        durableWrites += 1
+        return true
+    }
+
+    override suspend fun cancelSessionIfActive(expectedSessionId: String): Boolean {
+        cancellationIds += expectedSessionId
+        val current = mutableSnapshots.value
+        val session = current.activeSession
+        if (session == null || session.id != expectedSessionId) return false
+        mutableSnapshots.value = current.copy(activeSession = null)
         durableWrites += 1
         return true
     }

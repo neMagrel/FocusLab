@@ -4,7 +4,7 @@ Focus Lab v1 намеренно остаётся компактным учебн
 
 - background service и second-by-second background execution;
 - exact alarms и notifications;
-- pause, resume и cancel session;
+- pause и resume session;
 - session history, calendar, Todo и daily streak;
 - retention pressure и расширенной RPG/gamification;
 - login, cloud sync, Firebase, Room и Retrofit;

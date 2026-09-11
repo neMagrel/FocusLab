@@ -20,6 +20,7 @@ data class FocusUiActions(
     val onCategorySelected: (String) -> Unit,
     val onDurationSelected: (Int) -> Unit,
     val onStartFocus: () -> Unit,
+    val onCancelFocus: () -> Unit,
     val onManageCategories: () -> Unit
 )
 
@@ -31,6 +32,7 @@ fun FocusRoute() {
             onCategorySelected = actions.onCategorySelected,
             onDurationSelected = actions.onDurationSelected,
             onStartFocus = actions.onStartFocus,
+            onCancelFocus = actions.onCancelFocus,
             onManageCategories = actions.onManageCategories
         )
     }
@@ -63,6 +65,7 @@ internal fun FocusRoute(
             onCategorySelected = viewModel::onCategorySelected,
             onDurationSelected = viewModel::onDurationSelected,
             onStartFocus = viewModel::onStartFocus,
+            onCancelFocus = viewModel::onCancelFocus,
             onManageCategories = { categoryEditorOpen = true }
         )
     }
