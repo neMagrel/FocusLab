@@ -45,7 +45,8 @@
     },
     {
       "id": "07_personalized",
-      "status": "planned",
+      "status": "available",
+      "directory": "07_personalized",
       "description": "Added with Stage 2.7 reference state."
     }
   ]
