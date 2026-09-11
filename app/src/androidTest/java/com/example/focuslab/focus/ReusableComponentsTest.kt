@@ -173,4 +173,36 @@ class ReusableComponentsTest {
         composeRule.onNodeWithText("Уровень: 1").assertIsDisplayed()
         composeRule.onNodeWithText("Завершено сессий: 4").assertIsDisplayed()
     }
+
+    @Test
+    fun focusScreenForwardsSelectionAndDisplaysAuthoritativeValues() {
+        var selectedCategoryId: String? = null
+        var selectedDuration: Int? = null
+        composeRule.setContent {
+            FocusLabTheme {
+                FocusScreen(
+                    uiState = FocusUiState(
+                        categories = categories,
+                        selectedCategoryId = "study",
+                        selectedDurationMinutes = 1,
+                        session = FocusSessionUiState.Idle
+                    ),
+                    onCategorySelected = { selectedCategoryId = it },
+                    onDurationSelected = { selectedDuration = it },
+                    onStartFocus = {},
+                    onManageCategories = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("category_selector_study").assertIsSelected()
+        composeRule.onNodeWithTag("duration_selector_1").assertIsSelected()
+        composeRule.onNodeWithTag("category_selector_long").performClick()
+        composeRule.onNodeWithTag("duration_selector_15").performClick()
+
+        composeRule.runOnIdle {
+            assertEquals("long", selectedCategoryId)
+            assertEquals(15, selectedDuration)
+        }
+    }
 }

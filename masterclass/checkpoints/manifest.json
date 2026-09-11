@@ -33,7 +33,8 @@
     },
     {
       "id": "05_selection",
-      "status": "planned",
+      "status": "available",
+      "directory": "05_selection",
       "description": "Added with Stage 2.4 reference state."
     },
     {
